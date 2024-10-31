@@ -1,14 +1,17 @@
 # VHS Audio Auto Align
 
 ## Motivation
-This script assists in aligning linear audio with TBC data, specifically addressing challenges encountered with [namazso's clockgen mod](https://github.com/namazso/cxadc-clockgen-mod). The original method of using a clock generator modification proved to be tedious and difficult for someone not well versed in hardware. Specifically, the provided documentation was lacking for the DomesdayDuplicator, and attempts to implement the modification were unsuccessful. To overcome these limitations, this script offers a software-based solution.
+This script assists in aligning linear audio with TBC data, specifically addressing challenges encountered with [namazso's clockgen mod](https://github.com/namazso/cxadc-clockgen-mod). The original method of using a clock generator modification proved to be tedious and difficult for someone not well-versed in hardware. Specifically, the provided documentation was lacking for the DomesdayDuplicator, and attempts to implement the modification were unsuccessful. To overcome these limitations, this script offers a software-based solution.
 
 ## Functionality
-This script employs a binary search algorithm to determine the optimal sample rate for aligning audio with a reference video. It leverages `VhsDecodeAutoAudioAlign` and operates as follows:
+This script uses a ratio-based approach to determine the optimal sample rate for aligning audio with a reference video. It leverages `VhsDecodeAutoAudioAlign` and operates as follows:
 - The script starts by running `VhsDecodeAutoAudioAlign` at an initial sample rate provided as input.
 - It compares the duration of the processed audio to the duration of the reference video.
-- Based on this comparison, the script adjusts the sample rate, increasing it if the audio is longer than the video and decreasing it if it's shorter.
-- The process repeats, narrowing the search range until the closest matching sample rate is found.
+- The new sample rate is calculated using the ratio of the original length multiplied by the original sample rate divided by the length after processing with the original sample rate.
+- The process continues until the audio is aligned with the video.
+
+### Important Note:
+Ensure that the original linear audio recording starts and stops exactly when the video starts and stops for the alignment to work correctly.
 
 ## Requirements
 - **ffmpeg-python**: This package is used to interact with FFmpeg within the Python script.

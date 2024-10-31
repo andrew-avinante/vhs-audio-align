@@ -1,13 +1,13 @@
 """
 VHS Audio Auto Align Script
 
-This script finds the closest Hz that will allow for seamless audio alignment without the need for hardware clock mods
+This script finds the closest Hz that will allow for seamless audio alignment without the need for hardware clock mods.
 
 Dependencies:
-- ffmpeg-python
-- sox
-- mono (for executing .NET applications)
-- dotenv (for loading environment variables)
+- ffmpeg-python: For media file handling and probing.
+- sox: For audio processing.
+- mono: For executing .NET applications.
+- dotenv: For loading environment variables.
 
 Usage:
     python script.py <input_path> <tbc_json> <reference_video_path> --output_path <output_path> --hz <sample_rate> --channels <num_channels> --bits <bits_per_sample>
@@ -127,7 +127,7 @@ def process_audio(input: str, tbc_path: str, output: str, rate_hz: int, channels
     sample_size_bytes = (bits_per_sample // 8) * channels
 
     try:
-        # First command: sox processing
+        # First command: sox processing to convert input audio to raw format
         sox_cmd_1 = [
             'sox', '-D',
             input,
@@ -140,13 +140,13 @@ def process_audio(input: str, tbc_path: str, output: str, rate_hz: int, channels
         ]
         sox_process = subprocess.Popen(sox_cmd_1, stdout=subprocess.PIPE)
 
-        # Second command: mono with VhsDecodeAutoAudioAlign.exe
+        # Second command: aligning audio using mono and the VhsDecodeAutoAudioAlign executable
         mono_cmd = [
             'mono', VHS_DECODE_AUTO_AUDIO_ALIGN_EXE,
             'stream-align',
-            # Ensure this is a string
+            # Sample size in bytes for the alignment process
             '--sample-size-bytes', str(sample_size_bytes),
-            # Ensure this is a string
+            # Sample rate in Hz for the alignment process
             '--stream-sample-rate-hz', str(rate_hz),
             '--json', tbc_path
         ]
@@ -155,7 +155,7 @@ def process_audio(input: str, tbc_path: str, output: str, rate_hz: int, channels
         # Allow sox_process to receive a SIGPIPE if mono_process exits
         sox_process.stdout.close()
 
-        # Third command: final sox processing
+        # Third command: final sox processing to output the aligned audio
         sox_cmd_2 = [
             'sox', '-D',
             '-t', 'raw',
@@ -185,7 +185,7 @@ def search(input_path: str,
            output_path: str,
            hz: int,
            channels: int,
-           bits: int) -> tuple:
+           bits: int) -> int:
     """
     Searches for the optimal sample rate to align the audio with the reference video.
 
@@ -205,32 +205,13 @@ def search(input_path: str,
     base_duration = process_audio(
         input_path, tbc, output_path, hz, channels, bits)
 
-    # ref_duration < initial_length -> increase hz, else, decrease
-    audio_longer_than_video = ref_duration < base_duration
-    modified_hz = hz + 50 if audio_longer_than_video else hz - 50
+    # Calculate the adjusted sample rate based on the reference duration
+    actual_hz = int(ref_duration * hz / base_duration)
 
-    low, high = modified_hz, hz if modified_hz < hz else hz, modified_hz
+    actual_duration = process_audio(
+        input_path, tbc, output_path, actual_hz, channels, bits)
 
-    closest_hz = high
-    closest_distance = math.inf
-
-    while low <= high:
-        mid = int(low + (high - low) / 2)
-
-        duration = process_audio(
-            input_path, tbc, output_path, mid, channels, bits)
-
-        dist = abs(ref_duration - duration)
-        if dist < closest_distance:
-            closest_distance = dist
-            closest_hz = mid
-
-        if ref_duration < duration:
-            low = mid + 1
-        else:
-            high = mid - 1
-
-    return closest_hz, closest_distance
+    return actual_hz, abs(ref_duration - actual_duration)
 
 
 def main():
@@ -249,14 +230,12 @@ def main():
     bits = args.bits
 
     t0 = time.time()
-    closest_hz, closest_distance = search(
+    actual_hz, actual_duration = search(
         input_path, reference_video_path, tbc, output_path, hz, channels, bits)
+    
     t1 = time.time()
 
-    print(closest_hz, closest_distance)
-
-    print(f"Found a solution in {
-          t1-t0} seconds: {closest_hz} Hz with a {closest_distance} second(s) shift")
+    print(f"Found a solution in {t1-t0} seconds: {actual_hz} Hz with a {actual_duration} second(s) shift")
 
 
 if __name__ == "__main__":
