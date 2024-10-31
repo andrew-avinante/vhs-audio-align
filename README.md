@@ -8,7 +8,6 @@ This script uses a ratio-based approach to determine the optimal sample rate for
 - The script starts by running `VhsDecodeAutoAudioAlign` at an initial sample rate provided as input.
 - It compares the duration of the processed audio to the duration of the reference video.
 - The new sample rate is calculated using the ratio of the original length multiplied by the original sample rate divided by the length after processing with the original sample rate.
-- The process continues until the audio is aligned with the video.
 
 ### Important Note:
 Ensure that the original linear audio recording starts and stops exactly when the video starts and stops for the alignment to work correctly.
